@@ -56,7 +56,8 @@ async def scrape_website(url: str = Form(...), threads: int = Form(5)):
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
-        links = {urljoin(url, a['href']) for a in soup.find_all('a', href=True)}
+        # links = {urljoin(url, a['href']) for a in soup.find_all('a', href=True)}
+        links = [url]
     except Exception as e:
         return JSONResponse(content={"error": f"Failed to fetch base URL: {str(e)}"}, status_code=400)
 
