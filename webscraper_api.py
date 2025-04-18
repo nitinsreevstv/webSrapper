@@ -28,8 +28,8 @@ app.add_middleware(
 )
 
 @app.get("/")
-def read_root():
-    return {"message": "FastAPI scraper is live!"}
+def health():
+    return {"message": "Backend is running"}
 
 chrome_options = Options()
 chrome_options.add_argument("--headless=new")
