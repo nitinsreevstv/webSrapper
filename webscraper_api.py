@@ -21,6 +21,8 @@ print(f"🚀 FastAPI binding to port: {os.environ.get('PORT')}")
 
 app = FastAPI()
 
+os.makedirs("sessions", exist_ok=True)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Or restrict to your frontend URL
