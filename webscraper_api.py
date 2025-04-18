@@ -27,6 +27,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/")
+def read_root():
+    return {"message": "FastAPI scraper is live!"}
 
 chrome_options = Options()
 chrome_options.add_argument("--headless=new")
