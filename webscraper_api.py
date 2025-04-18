@@ -16,6 +16,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pypdf import PdfWriter
 from fastapi.middleware.cors import CORSMiddleware
 
+print(f"🚀 FastAPI binding to port: {os.environ.get('PORT')}")
+
 
 app = FastAPI()
 

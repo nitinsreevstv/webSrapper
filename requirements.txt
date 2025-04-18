@@ -4,3 +4,4 @@ selenium
 beautifulsoup4
 requests
 pypdf
+python-multipart
