@@ -166,3 +166,31 @@ async def download_and_cleanup(request: Request):
     return StreamingResponse(file_iterator(), media_type="application/pdf", headers={
         "Content-Disposition": "attachment; filename=scraped_output.pdf"
     })
+
+from fastapi import UploadFile, File
+from fastapi.responses import FileResponse
+
+@app.post("/merge")
+async def merge_pdfs(files: list[UploadFile] = File(...)):
+    session_id = str(uuid.uuid4())
+    folder = f"sessions/{session_id}"
+    os.makedirs(folder, exist_ok=True)
+
+    pdf_paths = []
+
+    for i, file in enumerate(files):
+        path = os.path.join(folder, f"{i + 1}.pdf")
+        with open(path, "wb") as f:
+            f.write(await file.read())
+        pdf_paths.append(path)
+
+    output_path = os.path.join(folder, "merged.pdf")
+    writer = PdfWriter()
+
+    for pdf in pdf_paths:
+        writer.append(pdf)
+    writer.write(output_path)
+    writer.close()
+
+    return FileResponse(output_path, media_type="application/pdf", filename="merged.pdf")
+
