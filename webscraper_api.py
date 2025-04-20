@@ -3,6 +3,7 @@ import time
 import base64
 import shutil
 import uuid
+import io
 import logging
 import requests
 from io import BytesIO
@@ -18,6 +19,9 @@ from pypdf import PdfWriter
 from fastapi.middleware.cors import CORSMiddleware
 import threading
 import gc
+from rembg import remove
+from PIL import Image
+
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -177,3 +181,15 @@ async def merge_pdfs(files: list[UploadFile] = File(...)):
 
     return FileResponse(output_path, media_type="application/pdf", filename="merged.pdf")
 
+@app.post("/remove-bg")
+async def remove_background(file: UploadFile = File(...)):
+    input_bytes = await file.read()
+    result = remove(input_bytes)
+    img = Image.open(io.BytesIO(result)).convert("RGBA")
+
+    session_id = str(uuid.uuid4())
+    output_path = f"sessions/{session_id}.png"
+    os.makedirs("sessions", exist_ok=True)
+    img.save(output_path)
+
+    return FileResponse(output_path, media_type="image/png", filename="output.png")
