@@ -6,3 +6,5 @@ requests
 pypdf
 python-multipart
 rembg
+onnxruntime
+
