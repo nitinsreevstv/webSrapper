@@ -6,7 +6,7 @@ import uuid
 import logging
 import requests
 from io import BytesIO
-from fastapi import FastAPI, Form, Request
+from fastapi import FastAPI, Form
 from fastapi.responses import JSONResponse, StreamingResponse
 from bs4 import BeautifulSoup
 from selenium import webdriver
@@ -16,6 +16,7 @@ from urllib.parse import urljoin, urlparse
 from concurrent.futures import ThreadPoolExecutor
 from pypdf import PdfWriter
 from fastapi.middleware.cors import CORSMiddleware
+import threading
 import gc
 
 # Setup logging
@@ -128,44 +129,25 @@ async def scrape_website(url: str = Form(...), threads: int = Form(5)):
         logger.exception("Failed to merge PDFs")
         return JSONResponse(content={"error": f"Failed to merge PDFs: {e}"}, status_code=500)
 
+    # async cleanup thread
+    def delayed_cleanup():
+        time.sleep(10)  # wait 10 seconds before cleanup
+        try:
+            shutil.rmtree(output_folder)
+            logger.info(f"✅ Auto-cleaned session: {session_id}")
+        except Exception as e:
+            logger.warning(f"⚠️ Auto-cleanup failed: {e}")
+
+    threading.Thread(target=delayed_cleanup, daemon=True).start()
     gc.collect()
 
     return StreamingResponse(
         open(output_pdf_path, "rb"),
         media_type="application/pdf",
         headers={
-            "Content-Disposition": "attachment; filename=scraped_output.pdf",
-            "x-session-id": session_id
+            "Content-Disposition": "attachment; filename=scraped_output.pdf"
         }
     )
-
-@app.post("/download-clean")
-async def download_and_cleanup(request: Request):
-    data = await request.json()
-    session_id = data.get("session_id")
-    if not session_id:
-        return JSONResponse(content={"error": "Missing session_id"}, status_code=400)
-
-    output_folder = os.path.join("sessions", session_id)
-    pdf_path = os.path.join(output_folder, "scraped_output.pdf")
-    if not os.path.exists(pdf_path):
-        return JSONResponse(content={"error": "PDF not found"}, status_code=404)
-
-    def cleanup():
-        try:
-            shutil.rmtree(output_folder)
-            logger.info(f"✅ Cleaned session: {session_id}")
-        except Exception as e:
-            logger.warning(f"⚠️ Failed cleanup: {e}")
-
-    def file_iterator():
-        with open(pdf_path, "rb") as f:
-            yield from f
-        cleanup()
-
-    return StreamingResponse(file_iterator(), media_type="application/pdf", headers={
-        "Content-Disposition": "attachment; filename=scraped_output.pdf"
-    })
 
 from fastapi import UploadFile, File
 from fastapi.responses import FileResponse
