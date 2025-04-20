@@ -145,8 +145,9 @@ async def scrape_website(url: str = Form(...), threads: int = Form(5)):
         open(output_pdf_path, "rb"),
         media_type="application/pdf",
         headers={
-            "Content-Disposition": "attachment; filename=scraped_output.pdf"
-        }
+        "Content-Disposition": "attachment; filename=scraped_output.pdf",
+        "x-page-count": str(len(pdf_buffers))  # 👈 this line enables frontend count
+    }
     )
 
 from fastapi import UploadFile, File
