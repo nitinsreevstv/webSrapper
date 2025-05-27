@@ -9,3 +9,4 @@ rembg
 qrcode
 python-multipart
 aiofiles
+onnxruntime
