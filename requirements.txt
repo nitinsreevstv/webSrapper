@@ -1,10 +1,11 @@
 fastapi
 uvicorn
-selenium
-beautifulsoup4
 requests
+beautifulsoup4
+selenium
 pypdf
-python-multipart
+pillow
 rembg
-onnxruntime
-
+qrcode
+python-multipart
+aiofiles

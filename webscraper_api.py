@@ -7,8 +7,8 @@ import io
 import logging
 import requests
 from io import BytesIO
-from fastapi import FastAPI, Form
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi import FastAPI, Form, UploadFile
+from fastapi.responses import JSONResponse, StreamingResponse, FileResponse
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -20,8 +20,10 @@ from fastapi.middleware.cors import CORSMiddleware
 import threading
 import gc
 from rembg import remove
-from PIL import Image
-
+from PIL import Image, ImageDraw
+import qrcode
+import uuid
+import os
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -193,3 +195,64 @@ async def remove_background(file: UploadFile = File(...)):
     img.save(output_path)
 
     return FileResponse(output_path, media_type="image/png", filename="output.png")
+
+
+TEMP_DIR = "/tmp/qr_temp"
+os.makedirs(TEMP_DIR, exist_ok=True)
+
+def generate_styled_qr(vcard, logo_path):
+    qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_H)
+    qr.add_data(vcard)
+    qr.make()
+    matrix = qr.get_matrix()
+    size = len(matrix)
+
+    logo = Image.open(logo_path).convert("RGBA").resize((size, size))
+    qr_img = Image.new("RGBA", (size, size), (255, 255, 255, 255))
+    draw = ImageDraw.Draw(qr_img)
+
+    for y in range(size):
+        for x in range(size):
+            if matrix[y][x]:
+                r, g, b, a = logo.getpixel((x, y))
+                if a > 100:
+                    draw.point((x, y), fill=(r, g, b, 255))
+                else:
+                    draw.point((x, y), fill=(255, 255, 204, 255))  # light yellow outside
+
+    return qr_img.resize((600, 600), resample=Image.NEAREST)
+
+@app.post("/generate-qr")
+async def generate_qr(
+    name: str = Form(...),
+    designation: str = Form(...),
+    phone: str = Form(...),
+    email: str = Form(...),
+    company: str = Form(...),
+    logo: UploadFile = Form(...)
+):
+    try:
+        vcard = f"""BEGIN:VCARD
+VERSION:3.0
+N:{name}
+ORG:{company}
+TITLE:{designation}
+TEL:{phone}
+EMAIL:{email}
+END:VCARD"""
+
+        logo_filename = f"{uuid.uuid4()}_{logo.filename}"
+        logo_path = os.path.join(TEMP_DIR, logo_filename)
+        with open(logo_path, "wb") as f:
+            f.write(await logo.read())
+
+        styled_qr = generate_styled_qr(vcard, logo_path)
+
+        output_filename = f"qr_{uuid.uuid4()}.png"
+        output_path = os.path.join(TEMP_DIR, output_filename)
+        styled_qr.save(output_path)
+
+        return FileResponse(output_path, media_type="image/png", filename="contact_qr.png")
+
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
